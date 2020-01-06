@@ -19,6 +19,18 @@ DEFAULT_FORMAT = "csv"
 DEFAULT_TEST = "speedtest"
 
 
+def nested_get(d, *keys):
+    """
+    A safe get function for a nested dictionary.
+    """
+    for key in keys:
+        try:
+            d = d[key]
+        except KeyError:
+            return None
+    return d
+
+
 def flatten_json(b, delim):
     """
     A simple function for flattening JSON by concatenating keys w/ a delimiter.
@@ -80,17 +92,18 @@ def import_dash_legacy(path):
     with jsonlines.open(path, mode="r") as reader:
         data = reader.read()
         if "test_name" in data:
-            record["test_name"] = data["test_name"]
-            record["test_runtime"] = data["test_runtime"]
-            record["test_start_time"] = data["test_start_time"]
-            record["connect_latency"] = data["test_keys"]["simple"][
-                "connect_latency"]
-            record["median_bitrate"] = data["test_keys"]["simple"][
-                "median_bitrate"]
-            record["min_playout_delay"] = data["test_keys"]["simple"][
-                "min_playout_delay"]
-            record["probe_asn"] = data["probe_asn"]
-            record["probe_cc"] = data["probe_cc"]
+            record["test_name"] = nested_get(data, "test_name")
+            record["test_runtime"] = nested_get(data, "test_runtime")
+            record["test_start_time"] = nested_get(data, "test_start_time")
+            record["connect_latency"] = nested_get(data, "test_keys", "simple",
+                                                   "connect_latency")
+            record["median_bitrate"] = nested_get(data, "test_keys", "simple",
+                                                  "median_bitrate")
+            record["min_playout_delay"] = nested_get(data, "test_keys",
+                                                     "simple",
+                                                     "min_playout_delay")
+            record["probe_asn"] = nested_get(data, "probe_asn")
+            record["probe_cc"] = nested_get(data, "probe_cc")
             return record
 
 
@@ -102,23 +115,31 @@ def import_ndt_legacy(path):
     with jsonlines.open(path, mode="r") as reader:
         data = reader.read()
         if "probe_asn" in data:
-            record["server_address"] = data["test_keys"]["server_address"]
-            record["download"] = data["test_keys"]["simple"]["download"]
-            record["upload"] = data["test_keys"]["simple"]["upload"]
-            record["ping"] = data["test_keys"]["simple"]["ping"]
-            record["avg_rtt"] = data["test_keys"]["advanced"]["avg_rtt"]
-            record["max_rtt"] = data["test_keys"]["advanced"]["max_rtt"]
-            record["min_rtt"] = data["test_keys"]["advanced"]["min_rtt"]
-            record["congestion_limited"] = data["test_keys"]["advanced"][
-                "congestion_limited"]
-            record["packet_loss"] = data["test_keys"]["advanced"][
-                "packet_loss"]
-            record["sender_limited"] = data["test_keys"]["advanced"][
-                "sender_limited"]
-            record["receiver_limited"] = data["test_keys"]["advanced"][
-                "receiver_limited"]
-            record["probe_asn"] = data["probe_asn"]
-            record["probe_cc"] = data["probe_cc"]
+            record["server_address"] = nested_get(data, "test_keys",
+                                                  "server_address")
+            record["download"] = nested_get(data, "test_keys", "simple",
+                                            "download")
+            record["upload"] = nested_get(data, "test_keys", "simple",
+                                          "upload")
+            record["ping"] = nested_get(data, "test_keys", "simple", "ping")
+            record["avg_rtt"] = nested_get(data, "test_keys", "advanced",
+                                           "avg_rtt")
+            record["max_rtt"] = nested_get(data, "test_keys", "advanced",
+                                           "max_rtt")
+            record["min_rtt"] = nested_get(data, "test_keys", "advanced",
+                                           "min_rtt")
+            record["congestion_limited"] = nested_get(data, "test_keys",
+                                                      "advanced",
+                                                      "congestion_limited")
+            record["packet_loss"] = nested_get(data, "test_keys", "advanced",
+                                               "packet_loss")
+            record["sender_limited"] = nested_get(data, "test_keys",
+                                                  "advanced", "sender_limited")
+            record["receiver_limited"] = nested_get(data, "test_keys",
+                                                    "advanced",
+                                                    "receiver_limited")
+            record["probe_asn"] = nested_get(data, "probe_asn")
+            record["probe_cc"] = nested_get(data, "probe_cc")
             return record
 
 
