@@ -28,6 +28,8 @@ def nested_get(d, *keys):
             d = d[key]
         except KeyError:
             return None
+        except TypeError:
+            return None
     return d
 
 
@@ -90,7 +92,10 @@ def import_dash_legacy(path):
     """
     record = {}
     with jsonlines.open(path, mode="r") as reader:
-        data = reader.read()
+        try:
+            data = reader.read(skip_empty=True)
+        except EOFError:
+            return {}
         if "test_name" in data:
             record["test_name"] = nested_get(data, "test_name")
             record["test_runtime"] = nested_get(data, "test_runtime")
@@ -113,8 +118,11 @@ def import_ndt_legacy(path):
     """
     record = {}
     with jsonlines.open(path, mode="r") as reader:
-        data = reader.read()
-        if "probe_asn" in data:
+        try:
+            data = reader.read(skip_empty=True)
+        except EOFError:
+            return {}
+        if "test_keys" in data:
             record["server_address"] = nested_get(data, "test_keys",
                                                   "server_address")
             record["download"] = nested_get(data, "test_keys", "simple",
