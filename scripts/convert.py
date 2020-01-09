@@ -8,6 +8,7 @@ import difflib
 import glob
 import logging
 import os
+import sys
 
 import configargparse
 import csv
@@ -97,9 +98,8 @@ def import_dash_legacy(path):
         except EOFError:
             return {}
         if "test_name" in data:
-            record["test_name"] = nested_get(data, "test_name")
-            record["test_runtime"] = nested_get(data, "test_runtime")
-            record["test_start_time"] = nested_get(data, "test_start_time")
+            record["probe_asn"] = nested_get(data, "probe_asn")
+            record["probe_cc"] = nested_get(data, "probe_cc")
             record["connect_latency"] = nested_get(data, "test_keys", "simple",
                                                    "connect_latency")
             record["median_bitrate"] = nested_get(data, "test_keys", "simple",
@@ -107,8 +107,9 @@ def import_dash_legacy(path):
             record["min_playout_delay"] = nested_get(data, "test_keys",
                                                      "simple",
                                                      "min_playout_delay")
-            record["probe_asn"] = nested_get(data, "probe_asn")
-            record["probe_cc"] = nested_get(data, "probe_cc")
+            record["test_name"] = nested_get(data, "test_name")
+            record["test_runtime"] = nested_get(data, "test_runtime")
+            record["test_start_time"] = nested_get(data, "test_start_time")
             return record
 
 
@@ -123,31 +124,34 @@ def import_ndt_legacy(path):
         except EOFError:
             return {}
         if "test_keys" in data:
+            record["probe_asn"] = nested_get(data, "probe_asn")
+            record["probe_cc"] = nested_get(data, "probe_cc")
+            record["software_name"] = nested_get(data, "software_name")
             record["server_address"] = nested_get(data, "test_keys",
                                                   "server_address")
-            record["download"] = nested_get(data, "test_keys", "simple",
-                                            "download")
-            record["upload"] = nested_get(data, "test_keys", "simple",
-                                          "upload")
-            record["ping"] = nested_get(data, "test_keys", "simple", "ping")
             record["avg_rtt"] = nested_get(data, "test_keys", "advanced",
                                            "avg_rtt")
+            record["congestion_limited"] = nested_get(data, "test_keys",
+                                                      "advanced",
+                                                      "congestion_limited")
             record["max_rtt"] = nested_get(data, "test_keys", "advanced",
                                            "max_rtt")
             record["min_rtt"] = nested_get(data, "test_keys", "advanced",
                                            "min_rtt")
-            record["congestion_limited"] = nested_get(data, "test_keys",
-                                                      "advanced",
-                                                      "congestion_limited")
             record["packet_loss"] = nested_get(data, "test_keys", "advanced",
                                                "packet_loss")
-            record["sender_limited"] = nested_get(data, "test_keys",
-                                                  "advanced", "sender_limited")
             record["receiver_limited"] = nested_get(data, "test_keys",
                                                     "advanced",
                                                     "receiver_limited")
-            record["probe_asn"] = nested_get(data, "probe_asn")
-            record["probe_cc"] = nested_get(data, "probe_cc")
+            record["sender_limited"] = nested_get(data, "test_keys",
+                                                  "advanced", "sender_limited")
+            record["download"] = nested_get(data, "test_keys", "simple",
+                                            "download")
+            record["ping"] = nested_get(data, "test_keys", "simple", "ping")
+            record["upload"] = nested_get(data, "test_keys", "simple",
+                                          "upload")
+            record["test_runtime"] = nested_get(data, "test_runtime")
+            record["test_start_time"] = nested_get(data, "test_start_time")
             return record
 
 
@@ -217,14 +221,6 @@ def main():
         "An input filename pattern containing one or more of %%l (location type), %%n (network type), %%c (connection type), and %%d (datestamp).",
     )
     parser.add(
-        "-r",
-        "--recurse",
-        action="store_true",
-        dest="recurse",
-        default=False,
-        help="If the input is a directory, recursively search it for files.",
-    )
-    parser.add(
         "input",
         nargs="+",
         help=
@@ -239,12 +235,18 @@ def main():
 
     pathlist = []
     for i in settings.input:
-        pathlist.append(glob.glob(i, recursive=settings.recurse))
+        pathlist.append(glob.glob(i))
 
     pathlist = list(set().union(*pathlist))
 
+    if not pathlist:
+        logger.error("No valid files found in specified path.")
+        sys.exit(1)
+
     records = []
     for path in pathlist:
+        if os.path.isdir(path):
+            continue
         importer = tests.get(settings.test, DEFAULT_TEST)
         contents = importer(path)
         if settings.pattern:
@@ -258,6 +260,10 @@ def main():
             if "d" in pattern:
                 contents["datestamp"] = pattern["d"]
         records.append(contents)
+
+    if not records:
+        logger.error("No valid records found in specified files.")
+        sys.exit(1)
 
     exporter = exporters.get(settings.format, DEFAULT_FORMAT)
     exporter(settings.output, records)
