@@ -166,6 +166,7 @@ def export_csv(path, data):
     """
     Export function for CSV-format output files.
     """
+    data.sort(key=lambda d: len(d), reverse=True)
     with open(path, "w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=data[0].keys())
         writer.writeheader()
