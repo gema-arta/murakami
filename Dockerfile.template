@@ -5,12 +5,22 @@ MAINTAINER Measurement Lab Support <support@measurementlab.net>
 RUN apk add --update build-base gcc cmake libressl-dev curl-dev git linux-headers
 
 # Download and build libndt.
-RUN git clone https://github.com/measurement-kit/libndt.git
-WORKDIR /libndt
-RUN git checkout 9369f65ad47dd4c21b1df69c609ddb1d6ef2d493
+#RUN git clone https://github.com/measurement-kit/libndt.git
+#WORKDIR /libndt
+#RUN git checkout 9369f65ad47dd4c21b1df69c609ddb1d6ef2d493
 
-RUN cmake .
-RUN cmake --build . -j $(nproc)
+#RUN cmake .
+#RUN cmake --build . -j $(nproc)
+
+# Build ndt7-client-go
+FROM balenalib/%%BALENA_MACHINE_NAME%%-alpine-golang:1.12-3.10-build AS ndt7gobuild
+RUN apk add --no-cache git
+RUN go get -v github.com/m-lab/ndt7-client-go/cmd/ndt7-client
+
+# Build ndt5-client-go
+FROM balenalib/%%BALENA_MACHINE_NAME%%-alpine-golang:1.12-3.10-build AS ndt5gobuild
+RUN apk add --no-cache git
+RUN go get -v github.com/m-lab/ndt5-client-go/cmd/ndt5-client
 
 # Build dash-client
 FROM balenalib/%%BALENA_MACHINE_NAME%%-alpine-golang:1.12-3.10-build AS dashbuild
@@ -20,6 +30,7 @@ RUN go get github.com/neubot/dash/cmd/dash-client
 # Murakami image
 FROM balenalib/%%BALENA_MACHINE_NAME%%-alpine-python:3.7-edge
 RUN apk update && apk upgrade
+
 # Install dependencies and speedtest-cli
 RUN apk add git curl libstdc++ libgcc gcc libc-dev libffi-dev libressl-dev speedtest-cli make
 RUN pip install 'poetry==0.12.17'
@@ -39,7 +50,8 @@ ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
 
 # Copy Murakami and previously built test clients into the container.
 COPY . /murakami/
-COPY --from=build /libndt/libndt-client /murakami/bin/
+COPY --from=ndt7gobuild /go/bin/ndt7-client /murakami/bin/
+COPY --from=ndt5gobuild /go/bin/ndt5-client /murakami/bin/
 COPY --from=dashbuild /go/bin/dash-client /murakami/bin/
 
 # Set up poetry to not create a virtualenv, since the docker container is

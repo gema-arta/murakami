@@ -20,6 +20,7 @@ RUN go get github.com/neubot/dash/cmd/dash-client
 # Murakami image
 FROM python:3-alpine3.10
 RUN apk update && apk upgrade
+
 # Install dependencies and speedtest-cli
 RUN apk add git curl libstdc++ libgcc gcc libc-dev libffi-dev libressl-dev speedtest-cli make
 RUN pip install 'poetry==0.12.17'
